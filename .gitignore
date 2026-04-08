@@ -1,0 +1,16 @@
+target/
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+.DS_Store
+Thumbs.db
+.env
+.env.local
+*.log
+setup-history.sh
+.history-backup/
