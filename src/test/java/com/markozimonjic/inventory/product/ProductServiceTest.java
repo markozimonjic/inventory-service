@@ -1,7 +1,6 @@
 package com.markozimonjic.inventory.product;
 
 import com.markozimonjic.inventory.messaging.StockChangedEvent;
-import com.markozimonjic.inventory.messaging.StockEventPublisher;
 import com.markozimonjic.inventory.messaging.StockOperation;
 import com.markozimonjic.inventory.product.exception.DuplicateSkuException;
 import com.markozimonjic.inventory.product.exception.InsufficientStockException;
@@ -13,6 +12,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -31,7 +31,7 @@ class ProductServiceTest {
     private ProductRepository repository;
 
     @Mock
-    private StockEventPublisher eventPublisher;
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private ProductService service;
@@ -82,7 +82,7 @@ class ProductServiceTest {
         assertThat(result.getQuantity()).isEqualTo(13);
 
         ArgumentCaptor<StockChangedEvent> captor = ArgumentCaptor.forClass(StockChangedEvent.class);
-        verify(eventPublisher, times(1)).publish(captor.capture());
+        verify(applicationEventPublisher, times(1)).publishEvent(captor.capture());
         StockChangedEvent event = captor.getValue();
         assertThat(event.sku()).isEqualTo("SKU-1");
         assertThat(event.previousQuantity()).isEqualTo(10);
@@ -97,7 +97,7 @@ class ProductServiceTest {
         assertThatThrownBy(() -> service.decreaseStock("SKU-1", 50))
                 .isInstanceOf(InsufficientStockException.class);
 
-        verify(eventPublisher, never()).publish(any());
+        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -107,6 +107,6 @@ class ProductServiceTest {
         Product result = service.decreaseStock("SKU-1", 4);
 
         assertThat(result.getQuantity()).isEqualTo(6);
-        verify(eventPublisher).publish(any(StockChangedEvent.class));
+        verify(applicationEventPublisher).publishEvent(any(StockChangedEvent.class));
     }
 }
