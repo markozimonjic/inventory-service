@@ -3,6 +3,7 @@ package com.markozimonjic.inventory.product;
 import com.markozimonjic.inventory.messaging.StockChangedEvent;
 import com.markozimonjic.inventory.messaging.StockEventPublisher;
 import com.markozimonjic.inventory.messaging.StockOperation;
+import com.markozimonjic.inventory.product.exception.DuplicateSkuException;
 import com.markozimonjic.inventory.product.exception.InsufficientStockException;
 import com.markozimonjic.inventory.product.exception.ProductNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,7 @@ public class ProductService {
     @Transactional
     public Product create(String sku, String name, int quantity) {
         if (repository.existsBySku(sku)) {
-            throw new IllegalArgumentException("Product with SKU '" + sku + "' already exists");
+            throw new DuplicateSkuException(sku);
         }
         Product saved = repository.save(new Product(sku, name, quantity));
         log.info("Created product sku={} initialQuantity={}", saved.getSku(), saved.getQuantity());

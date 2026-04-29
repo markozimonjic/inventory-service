@@ -3,6 +3,7 @@ package com.markozimonjic.inventory.product;
 import com.markozimonjic.inventory.messaging.StockChangedEvent;
 import com.markozimonjic.inventory.messaging.StockEventPublisher;
 import com.markozimonjic.inventory.messaging.StockOperation;
+import com.markozimonjic.inventory.product.exception.DuplicateSkuException;
 import com.markozimonjic.inventory.product.exception.InsufficientStockException;
 import com.markozimonjic.inventory.product.exception.ProductNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,7 +60,7 @@ class ProductServiceTest {
         when(repository.existsBySku("SKU-1")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create("SKU-1", "x", 1))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(DuplicateSkuException.class);
 
         verify(repository, never()).save(any());
     }
