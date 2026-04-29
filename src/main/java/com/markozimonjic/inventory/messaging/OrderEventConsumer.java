@@ -26,6 +26,8 @@ public class OrderEventConsumer {
             try {
                 productService.decreaseStock(line.sku(), line.quantity());
             } catch (ProductNotFoundException | InsufficientStockException | IllegalArgumentException ex) {
+                // deliberate: log and continue — partial fulfilment is acceptable for this service boundary.
+                // a production system would publish a compensation event or route to a DLT.
                 log.warn("Cannot reserve stock for orderId={} sku={}: {}",
                         event.orderId(), line.sku(), ex.getMessage());
             }

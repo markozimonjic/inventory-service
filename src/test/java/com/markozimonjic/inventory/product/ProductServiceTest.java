@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Optional;
 
@@ -63,6 +64,15 @@ class ProductServiceTest {
                 .isInstanceOf(DuplicateSkuException.class);
 
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void create_constraint_violation_maps_to_duplicate_sku() {
+        when(repository.existsBySku("SKU-1")).thenReturn(false);
+        when(repository.save(any(Product.class))).thenThrow(new DataIntegrityViolationException("unique constraint"));
+
+        assertThatThrownBy(() -> service.create("SKU-1", "x", 1))
+                .isInstanceOf(DuplicateSkuException.class);
     }
 
     @Test

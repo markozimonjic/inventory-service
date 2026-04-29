@@ -70,6 +70,23 @@ class OrderEventConsumerIT {
     }
 
     @Test
+    void order_event_with_zero_quantity_is_skipped_gracefully() {
+        productRepository.save(new Product("CONS-2", "Zero qty product", 10));
+
+        var event = new OrderCreatedEvent(
+                "ORD-003",
+                List.of(new OrderCreatedEvent.OrderLine("CONS-2", 0)),
+                Instant.now()
+        );
+        kafkaTemplate.send("orders.created", "ORD-003", event);
+
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            Product product = productRepository.findBySku("CONS-2").orElseThrow();
+            assertThat(product.getQuantity()).isEqualTo(10);
+        });
+    }
+
+    @Test
     void order_event_with_unknown_sku_is_skipped_gracefully() {
         var event = new OrderCreatedEvent(
                 "ORD-002",

@@ -8,6 +8,7 @@ import com.markozimonjic.inventory.product.exception.ProductNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,9 +38,14 @@ public class ProductService {
         if (repository.existsBySku(sku)) {
             throw new DuplicateSkuException(sku);
         }
-        Product saved = repository.save(new Product(sku, name, quantity));
-        log.info("Created product sku={} initialQuantity={}", saved.getSku(), saved.getQuantity());
-        return saved;
+        try {
+            Product saved = repository.save(new Product(sku, name, quantity));
+            log.info("Created product sku={} initialQuantity={}", saved.getSku(), saved.getQuantity());
+            return saved;
+        } catch (DataIntegrityViolationException ex) {
+            // concurrent request won the race — unique constraint on sku was violated
+            throw new DuplicateSkuException(sku);
+        }
     }
 
     @Transactional
