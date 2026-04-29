@@ -25,7 +25,7 @@ public class OrderEventConsumer {
         for (OrderCreatedEvent.OrderLine line : event.lines()) {
             try {
                 productService.decreaseStock(line.sku(), line.quantity());
-            } catch (ProductNotFoundException | InsufficientStockException ex) {
+            } catch (ProductNotFoundException | InsufficientStockException | IllegalArgumentException ex) {
                 log.warn("Cannot reserve stock for orderId={} sku={}: {}",
                         event.orderId(), line.sku(), ex.getMessage());
             }
