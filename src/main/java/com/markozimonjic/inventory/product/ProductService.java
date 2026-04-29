@@ -1,13 +1,12 @@
 package com.markozimonjic.inventory.product;
 
 import com.markozimonjic.inventory.messaging.StockChangedEvent;
+import com.markozimonjic.inventory.messaging.StockEventPublisher;
 import com.markozimonjic.inventory.messaging.StockOperation;
-import com.markozimonjic.inventory.product.exception.DuplicateSkuException;
 import com.markozimonjic.inventory.product.exception.InsufficientStockException;
 import com.markozimonjic.inventory.product.exception.ProductNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,7 +18,7 @@ import java.util.List;
 public class ProductService {
 
     private final ProductRepository repository;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final StockEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<Product> findAll() {
@@ -35,7 +34,7 @@ public class ProductService {
     @Transactional
     public Product create(String sku, String name, int quantity) {
         if (repository.existsBySku(sku)) {
-            throw new DuplicateSkuException(sku);
+            throw new IllegalArgumentException("Product with SKU '" + sku + "' already exists");
         }
         Product saved = repository.save(new Product(sku, name, quantity));
         log.info("Created product sku={} initialQuantity={}", saved.getSku(), saved.getQuantity());
@@ -47,7 +46,7 @@ public class ProductService {
         Product product = getBySku(sku);
         int previous = product.getQuantity();
         product.increaseStock(amount);
-        applicationEventPublisher.publishEvent(StockChangedEvent.of(product, previous, StockOperation.INCREASE));
+        eventPublisher.publish(StockChangedEvent.of(product, previous, StockOperation.INCREASE));
         return product;
     }
 
@@ -59,7 +58,7 @@ public class ProductService {
         }
         int previous = product.getQuantity();
         product.decreaseStock(amount);
-        applicationEventPublisher.publishEvent(StockChangedEvent.of(product, previous, StockOperation.DECREASE));
+        eventPublisher.publish(StockChangedEvent.of(product, previous, StockOperation.DECREASE));
         return product;
     }
 }

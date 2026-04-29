@@ -1,8 +1,8 @@
 package com.markozimonjic.inventory.product;
 
 import com.markozimonjic.inventory.messaging.StockChangedEvent;
+import com.markozimonjic.inventory.messaging.StockEventPublisher;
 import com.markozimonjic.inventory.messaging.StockOperation;
-import com.markozimonjic.inventory.product.exception.DuplicateSkuException;
 import com.markozimonjic.inventory.product.exception.InsufficientStockException;
 import com.markozimonjic.inventory.product.exception.ProductNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,7 +12,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -31,7 +30,7 @@ class ProductServiceTest {
     private ProductRepository repository;
 
     @Mock
-    private ApplicationEventPublisher applicationEventPublisher;
+    private StockEventPublisher eventPublisher;
 
     @InjectMocks
     private ProductService service;
@@ -60,7 +59,7 @@ class ProductServiceTest {
         when(repository.existsBySku("SKU-1")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create("SKU-1", "x", 1))
-                .isInstanceOf(DuplicateSkuException.class);
+                .isInstanceOf(IllegalArgumentException.class);
 
         verify(repository, never()).save(any());
     }
@@ -82,7 +81,7 @@ class ProductServiceTest {
         assertThat(result.getQuantity()).isEqualTo(13);
 
         ArgumentCaptor<StockChangedEvent> captor = ArgumentCaptor.forClass(StockChangedEvent.class);
-        verify(applicationEventPublisher, times(1)).publishEvent(captor.capture());
+        verify(eventPublisher, times(1)).publish(captor.capture());
         StockChangedEvent event = captor.getValue();
         assertThat(event.sku()).isEqualTo("SKU-1");
         assertThat(event.previousQuantity()).isEqualTo(10);
@@ -97,7 +96,7 @@ class ProductServiceTest {
         assertThatThrownBy(() -> service.decreaseStock("SKU-1", 50))
                 .isInstanceOf(InsufficientStockException.class);
 
-        verify(applicationEventPublisher, never()).publishEvent(any());
+        verify(eventPublisher, never()).publish(any());
     }
 
     @Test
@@ -107,6 +106,6 @@ class ProductServiceTest {
         Product result = service.decreaseStock("SKU-1", 4);
 
         assertThat(result.getQuantity()).isEqualTo(6);
-        verify(applicationEventPublisher).publishEvent(any(StockChangedEvent.class));
+        verify(eventPublisher).publish(any(StockChangedEvent.class));
     }
 }
