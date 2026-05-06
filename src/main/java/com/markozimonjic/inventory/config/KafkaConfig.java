@@ -1,7 +1,7 @@
 package com.markozimonjic.inventory.config;
 
 import com.markozimonjic.inventory.messaging.OrderCreatedEvent;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -17,9 +17,11 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
-import org.apache.kafka.clients.admin.NewTopic;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -66,10 +68,15 @@ public class KafkaConfig {
     @Bean
     public ConsumerFactory<String, OrderCreatedEvent> orderConsumerFactory() {
         Map<String, Object> props = new HashMap<>(kafkaProperties.buildConsumerProperties(null));
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        JsonDeserializer<OrderCreatedEvent> deserializer = new JsonDeserializer<>(OrderCreatedEvent.class);
-        deserializer.addTrustedPackages("com.markozimonjic.inventory.messaging");
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
+        JsonDeserializer<OrderCreatedEvent> jsonDeserializer = new JsonDeserializer<>(OrderCreatedEvent.class);
+        jsonDeserializer.addTrustedPackages("com.markozimonjic.inventory.messaging");
+
+        ErrorHandlingDeserializer<String> keyDeserializer =
+                new ErrorHandlingDeserializer<>(new StringDeserializer());
+        ErrorHandlingDeserializer<OrderCreatedEvent> valueDeserializer =
+                new ErrorHandlingDeserializer<>(jsonDeserializer);
+
+        return new DefaultKafkaConsumerFactory<>(props, keyDeserializer, valueDeserializer);
     }
 
     @Bean
@@ -77,6 +84,12 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, OrderCreatedEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(orderConsumerFactory());
+
+        // unparseable payloads cannot succeed on retry — log and seek past rather than blocking the partition
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler();
+        errorHandler.addNotRetryableExceptions(DeserializationException.class);
+        factory.setCommonErrorHandler(errorHandler);
+
         return factory;
     }
 }

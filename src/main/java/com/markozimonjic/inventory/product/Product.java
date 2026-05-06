@@ -66,9 +66,6 @@ public class Product {
         if (amount <= 0) {
             throw new IllegalArgumentException("amount must be positive");
         }
-        if (amount > this.quantity) {
-            throw new IllegalStateException("not enough stock");
-        }
         this.quantity -= amount;
     }
 }
